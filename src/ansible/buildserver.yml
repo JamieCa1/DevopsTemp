@@ -1,0 +1,38 @@
+---
+- name: Install and configure Jenkins CI (Build Role)
+  hosts: build_servers
+  become: true
+
+  vars_files:
+    - host_vars/build-monitor.yml
+
+  vars:
+    jenkins_admin_username: admin
+    jenkins_admin_password: "{{ vault_jenkins_admin_password | default('admin') }}"
+    jenkins_http_port: 8080
+    jenkins_hostname: localhost
+    jenkins_package_state: present
+    java_packages:
+      - java-17-openjdk
+      - java-17-openjdk-devel
+
+  roles:
+    - role: geerlingguy.java
+    - role: geerlingguy.jenkins
+
+  post_tasks:
+    - name: Ensure Jenkins is running and enabled
+      ansible.builtin.systemd:
+        name: jenkins
+        state: started
+        enabled: true
+        daemon_reload: true
+
+    - name: Wait for Jenkins to be ready
+      ansible.builtin.uri:
+        url: "http://localhost:8080/login"
+        status_code: 200
+      register: jenkins_status
+      retries: 30
+      delay: 10
+      until: jenkins_status.status == 200

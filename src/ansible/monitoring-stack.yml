@@ -1,0 +1,152 @@
+---
+- name: Monitoring Stack
+  hosts: build-monitor
+  become: true
+  tasks:
+    - name: Install Prometheus via Ansible role
+      ansible.builtin.include_role:
+        name: prometheus.prometheus.prometheus
+
+    - name: Install Grafana via Ansible role
+      ansible.builtin.include_role:
+        name: grafana.grafana.grafana
+      vars:
+        grafana_dashboard_sync: false
+        grafana_dashboards_cleanup: false
+        grafana_manage_dashboards: false
+
+    - name: Install Blackbox Exporter via Ansible role
+      ansible.builtin.include_role:
+        name: prometheus.prometheus.blackbox_exporter
+
+    - name: Configure Prometheus targets
+      ansible.builtin.copy:
+        dest: /etc/prometheus/prometheus.yml
+        owner: prometheus
+        group: prometheus
+        mode: "0644"
+        content: |
+          global:
+            scrape_interval: 15s
+            evaluation_interval: 15s
+
+          rule_files:
+            # - "first_rules.yml"
+            # - "second_rules.yml"
+
+          scrape_configs:
+            # Prometheus itself
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9090']
+
+            # Node Exporter on all servers
+            - job_name: 'node_exporter'
+              static_configs:
+                - targets:
+                    {% for host in groups['all'] %}
+                    - '{{ hostvars[host].ansible_host }}:9100'
+                    {% endfor %}
+
+            # MySQL Exporter on database servers
+            - job_name: 'mysqld_exporter'
+              static_configs:
+                - targets:
+                    {% for host in groups['db_servers'] %}
+                    - '{{ hostvars[host].ansible_host }}:9104'
+                    {% endfor %}
+
+            # Blackbox Exporter for HTTP/HTTPS checks
+            - job_name: 'blackbox'
+              metrics_path: /probe
+              params:
+                module: [http_2xx]
+              static_configs:
+                - targets:
+                    # Add your web servers here
+                    - 'http://localhost:3000'  # Grafana dashboard
+              relabel_configs:
+                - source_labels: [__address__]
+                  target_label: __param_target
+                - source_labels: [__param_target]
+                  target_label: instance
+                - target_label: __address__
+                  replacement: localhost:9115
+      notify: restart prometheus
+
+    - name: Wait for Grafana to be ready
+      ansible.builtin.uri:
+        url: "http://localhost:3000/api/health"
+        status_code: 200
+      register: grafana_health
+      retries: 30
+      delay: 5
+      until: grafana_health.status == 200
+
+    - name: Open monitoring ports
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        state: enabled
+        permanent: true
+        immediate: true
+      loop:
+        - "9090/tcp"
+        - "3000/tcp"
+        - "9115/tcp"
+
+  handlers:
+    - name: restart prometheus
+      ansible.builtin.systemd:
+        name: prometheus
+        state: restarted
+        enabled: true
+
+    - name: restart grafana
+      ansible.builtin.systemd:
+        name: grafana-server
+        state: restarted
+        enabled: true
+
+- name: Exporters - All Servers
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Node Exporter via Ansible role
+      ansible.builtin.include_role:
+        name: prometheus.prometheus.node_exporter
+
+    - name: Ensure Node Exporter is running
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: started
+        enabled: true
+
+- name: MySQL Exporter - Database Servers
+  hosts: db_servers
+  become: true
+  vars:
+    mysqld_exporter_data_source_name: "rise_app:{{ vault_db_password | default('changeme') }}@(localhost:3306)/RiseDB"
+  tasks:
+    - name: Install MySQL Exporter via Ansible role
+      ansible.builtin.include_role:
+        name: prometheus.prometheus.mysqld_exporter
+
+    - name: Ensure MySQL Exporter is running
+      ansible.builtin.systemd:
+        name: mysqld_exporter
+        state: started
+        enabled: true
+
+- name: Open Exporter Ports
+  hosts: all:!build-monitor
+  become: true
+  tasks:
+    - name: Open exporter ports
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        state: enabled
+        permanent: true
+        immediate: true
+      loop:
+        - "9100/tcp"
+        - "9104/tcp"

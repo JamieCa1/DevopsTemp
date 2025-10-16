@@ -1,0 +1,12 @@
+# site.yml
+---
+- name: Configure rh-base on all hosts
+  hosts: all
+  roles:
+    - bertvv.rh-base
+
+- import_playbook: security.yml
+- import_playbook: application.yml
+- import_playbook: database.yml
+- import_playbook: buildserver.yml
+- import_playbook: monitoring-stack.yml

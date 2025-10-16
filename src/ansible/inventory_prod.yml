@@ -1,0 +1,30 @@
+---
+all:
+  children:
+    servers:
+      hosts:
+        application:
+          ansible_host: "{{ production_app_host }}"
+        database:
+          ansible_host: "{{ production_db_host }}"
+        build-monitor:
+          ansible_host: "{{ production_build_monitor_host }}"
+      vars:
+        ansible_user: "{{ production_user }}"
+        ansible_ssh_private_key_file: "{{ production_ssh_key }}"
+
+    application:
+      hosts:
+        application:
+
+    database:
+      hosts:
+        database:
+
+    buildserver:
+      hosts:
+        build-monitor:
+
+    monitoring:
+      hosts:
+        build-monitor:

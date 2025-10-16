@@ -1,0 +1,28 @@
+---
+# Host variables for build server
+
+# Jenkins configuration
+jenkins_port: 8080
+jenkins_home: /var/lib/jenkins
+
+# .NET configuration
+dotnet_version: "9.0"
+
+# Application server for deployment
+app_server_host: "192.168.1.10"
+app_server_user: "rise"
+app_server_path: "/opt/rise-app"
+
+# rh-base role configuration
+rhbase_firewall_allow_ports:
+  - 8080/tcp
+  - 9100/tcp
+
+rhbase_packages:
+  - curl
+  - tar
+  - git
+  - firewalld
+  - java-17-openjdk
+  - java-17-openjdk-devel
+  - fontconfig

@@ -1,0 +1,10 @@
+---
+app_port: 5000
+http_port: 80
+https_port: 443
+dotnet_version: "9.0"
+
+# Database connection
+db_name: "RiseDB"
+db_user: "rise_app"
+db_password: "{{ vault_db_password | default('changeme') }}"

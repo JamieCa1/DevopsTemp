@@ -1,0 +1,15 @@
+---
+# Common packages for all servers
+common_packages:
+  - firewalld
+  - curl
+  - tar
+
+# Security packages
+security_packages:
+  - epel-release
+  - fail2ban
+
+# Application server packages
+app_packages:
+  - aspnetcore-runtime-9.0

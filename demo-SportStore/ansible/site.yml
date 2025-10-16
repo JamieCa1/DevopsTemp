@@ -1,0 +1,118 @@
+---
+- name: Deploy SportStore
+  hosts: sportstore
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install packages
+      apt:
+        name:
+          - git
+          - docker.io
+          - docker-compose
+          - python3-pip
+        state: present
+
+    - name: Install Docker Python
+      pip:
+        name:
+          - docker
+          - docker-compose
+        state: present
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add vagrant user to docker group
+      user:
+        name: vagrant
+        groups: docker
+        append: yes
+
+    - name: Reset ssh connection
+      meta: reset_connection
+
+    - name: Clone SportStore repository
+      git:
+        repo: https://github.com/HoGentTIN/p3ops-demo-app
+        dest: /home/vagrant/SportStore
+        force: yes
+      become_user: vagrant
+
+    - name: Copy Dockerfile to SportStore directory
+      copy:
+        src: ../Dockerfile
+        dest: /home/vagrant/SportStore/Dockerfile
+        owner: vagrant
+        group: vagrant
+        mode: "0644"
+
+    - name: Copy docker-compose.yml to SportStore directory
+      copy:
+        src: ../docker-compose.yml
+        dest: /home/vagrant/SportStore/docker-compose.yml
+        owner: vagrant
+        group: vagrant
+        mode: "0644"
+
+    - name: Stop and remove sportstore container if exists
+      docker_container:
+        name: sportstore
+        state: absent
+      ignore_errors: true
+
+    - name: Stop and remove sqlserver container if exists
+      docker_container:
+        name: sqlserver
+        state: absent
+      ignore_errors: true
+
+    - name: Remove sportstore network if exists
+      docker_network:
+        name: sportstore_sportstore-network
+        state: absent
+      ignore_errors: true
+
+    - name: Build SportStore Docker image
+      shell: docker-compose build
+      args:
+        chdir: /home/vagrant/SportStore
+      register: docker_build_output
+
+    # - name: Display build output
+    #   debug:
+    #     var: docker_build_output.stdout_lines
+
+    - name: Start containers with docker-compose
+      shell: docker-compose up -d
+      args:
+        chdir: /home/vagrant/SportStore
+      register: docker_up_output
+
+    # - name: Display docker-compose up
+    #   debug:
+    #     var: docker_up_output.stdout_lines
+
+    - name: Wait for SQL Server to be ready
+      wait_for:
+        port: 1433
+        host: localhost
+        delay: 10
+        timeout: 60
+
+    - name: Wait for SportStore application to be ready
+      wait_for:
+        port: 5000
+        host: localhost
+        delay: 5
+        timeout: 120
+
+    - name: Display success message
+      debug:
+        msg: "SportStore application is now running! Access it at http://{{ ansible_host }}:5000"

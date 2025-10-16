@@ -1,0 +1,35 @@
+# vagrant_hosts.yml
+#
+---
+
+- name: build-monitor
+  box: bento/almalinux-9
+  ip: 192.168.1.12
+  netmask: 255.255.255.0
+  cpus: 4
+  memory: 4096
+  forwarded_ports:
+    - guest: 8080 
+      host: 8080   
+    - guest: 3000
+      host: 3000
+    - guest: 9090
+      host: 9090
+
+
+- name: controlnode
+  ip: 172.16.128.9
+  netmask: 255.255.0.0
+
+- name: application
+  ip: 192.168.1.10
+  netmask: 255.255.255.0
+  cpus: 2
+  memory: 1024
+
+- name: database
+  ip: 192.168.1.11
+  netmask: 255.255.255.0
+  cpus: 2
+  memory: 3072
+

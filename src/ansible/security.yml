@@ -1,0 +1,66 @@
+---
+- name: Harden all servers with Fail2ban and SSH security
+  hosts: all
+  become: true
+  vars_files:
+    - group_vars/network.yml
+    - group_vars/packages.yml
+
+  tasks:
+    - name: Install EPEL repository
+      dnf:
+        name: epel-release
+        state: present
+
+    - name: Install fail2ban from EPEL
+      dnf:
+        name: fail2ban
+        state: present
+        enablerepo: epel
+
+    - name: Enable and start Fail2ban service
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: true
+
+    - name: Configure SSH daemon for security
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+        validate: "/usr/sbin/sshd -t -f %s"
+      loop:
+        - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+        - {
+            regexp: "^#?PasswordAuthentication",
+            line: "PasswordAuthentication no",
+          }
+      notify: Restart sshd
+
+    - name: Configure SELinux for security
+      ansible.posix.selinux:
+        policy: targeted
+        state: enforcing
+
+    - name: Set SELinux boolean for HTTP network connections
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: true
+        persistent: true
+
+  handlers:
+    - name: Restart sshd
+      systemd:
+        name: sshd
+        state: restarted
+
+- name: Configure centralized firewall rules
+  hosts: servers
+  become: true
+  vars_files:
+    - group_vars/network.yml
+    - group_vars/packages.yml
+  roles:
+    - firewall

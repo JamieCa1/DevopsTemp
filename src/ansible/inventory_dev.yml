@@ -1,0 +1,31 @@
+---
+all:
+  children:
+    servers:
+      hosts:
+        application:
+          ansible_host: 192.168.1.10
+        database:
+          ansible_host: 192.168.1.11
+        build-monitor:
+          ansible_host: 192.168.1.12
+      vars:
+        ansible_user: vagrant
+        ansible_ssh_private_key_file: "/home/vagrant/.ssh/{{ inventory_hostname }}_private_key"
+        ansible_become: true
+
+    app_servers:
+      hosts:
+        application:
+
+    db_servers:
+      hosts:
+        database:
+
+    build_servers:
+      hosts:
+        build-monitor:
+
+    monitoring_servers:
+      hosts:
+        build-monitor:

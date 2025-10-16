@@ -1,0 +1,109 @@
+---
+# BUILD ROLE CONFIGURATION (Jenkins)
+
+# Jenkins configuration
+jenkins_port: 8080
+jenkins_home: /var/lib/jenkins
+jenkins_admin_username: admin
+jenkins_admin_password: "{{ vault_jenkins_admin_password | default('admin') }}"
+jenkins_http_port: 8080
+jenkins_hostname: localhost
+jenkins_package_state: present
+
+# .NET configuration for builds
+dotnet_version: "9.0"
+
+# Application server for deployment
+app_server_host: "192.168.1.10"
+app_server_user: "rise"
+app_server_path: "/opt/rise-app"
+
+# =============================================================================
+# SHARED CONFIGURATION
+# =============================================================================
+
+java_packages:
+  - java-17-openjdk
+  - java-17-openjdk-devel
+
+rhbase_packages:
+  # Build tools
+  - curl
+  - tar
+  - git
+  - unzip
+  - wget
+  # Java
+  - java-17-openjdk
+  - java-17-openjdk-devel
+  - fontconfig
+  - dotnet-sdk-8.0
+  # Monitoring tools
+  - python3
+  - python3-pip
+  - htop
+  - iotop
+  - firewalld
+
+# =============================================================================
+# GRAFANA CONFIGURATION
+# =============================================================================
+
+grafana_ini:
+  server:
+    protocol: http
+    http_port: 3000
+    domain: localhost
+    root_url: http://localhost:3000
+
+  security:
+    admin_user: admin
+    admin_password: "{{ vault_grafana_admin_password | default('admin') }}"
+
+  database:
+    type: sqlite3
+    path: /var/lib/grafana/grafana.db
+
+# Datasource configuration
+grafana_datasources:
+  - name: prometheus
+    type: prometheus
+    access: proxy
+    url: "http://localhost:9090"
+    isDefault: true
+    jsonData:
+      timeInterval: "15s"
+
+# Dashboard configuration - DISABLED to avoid NoneType errors
+# grafana_dashboards:
+#   - dashboard_id: 15172
+#     revision_id: 2
+#     datasource: prometheus
+#     folder: ""
+#   - dashboard_id: 7362
+#     revision_id: 4
+#     datasource: prometheus
+#     folder: ""
+#   - dashboard_id: 13659
+#     revision_id: 1
+#     datasource: prometheus
+#     folder: ""
+
+# Disable dashboard synchronization to avoid NoneType errors
+grafana_dashboard_sync: false
+
+# Additional Grafana configuration to prevent dashboard sync issues
+grafana_provisioning:
+  sync:
+    dashboards: false
+  dashboards:
+    enabled: false
+
+# Force disable dashboard removal tasks
+grafana_dashboards_cleanup: false
+grafana_manage_dashboards: false
+grafana_dashboard_synchronize: false
+
+# Override internal variables to prevent NoneType errors
+__dashboards_present_list: []
+__dashboards_copied_list: []

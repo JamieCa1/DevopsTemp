@@ -1,0 +1,28 @@
+---
+# Firewall rules for database server
+- name: Open MariaDB port for database server
+  ansible.posix.firewalld:
+    zone: public
+    port: 3306/tcp
+    state: enabled
+    permanent: true
+    immediate: true
+
+- name: Allow application server to access database
+  ansible.posix.firewalld:
+    zone: public
+    rich_rule: "rule family='ipv4' source address='{{ app_server_ip }}' port port='3306' protocol='tcp' accept"
+    state: enabled
+    permanent: true
+    immediate: true
+
+- name: Open monitoring ports for database server
+  ansible.posix.firewalld:
+    zone: public
+    port: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+  loop:
+    - 9100/tcp
+    - 9104/tcp

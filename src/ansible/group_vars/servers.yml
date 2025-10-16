@@ -1,0 +1,6 @@
+---
+rhbase_tz:
+  - Europe/Brussels
+
+rhbase_firewall_allow_ports:
+  - "9100/tcp"

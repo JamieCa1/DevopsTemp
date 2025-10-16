@@ -1,0 +1,8 @@
+---
+# Network configuration - Dynamic IP addressing
+app_server_ip: "{{ hostvars['application']['ansible_host'] }}"
+db_server_ip: "{{ hostvars['database']['ansible_host'] }}"
+build_monitor_server_ip: "{{ hostvars['build-monitor']['ansible_host'] }}"
+
+# Database connection for application
+db_host: "{{ db_server_ip }}"

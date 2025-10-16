@@ -1,0 +1,27 @@
+---
+- name: Configure MariaDB database server
+  hosts: db_servers
+  become: true
+  vars_files:
+    - group_vars/network.yml
+    - group_vars/packages.yml
+  
+  roles:
+    - role: geerlingguy.mysql
+
+  post_tasks:
+    - name: Copy schema.sql to database server
+      copy:
+        src: files/schema.sql
+        dest: /tmp/schema.sql
+        owner: root
+        group: root
+        mode: '0644'
+      
+    - name: Import database schema
+      community.mysql.mysql_db:
+        name: RiseDB
+        state: import
+        target: /tmp/schema.sql
+        login_user: rise_app
+        login_password: "{{ vault_db_password | default('changeme') }}"

@@ -1,0 +1,19 @@
+---
+- name: sportstore
+  ip: 192.168.56.10
+  netmask: 255.255.255.0
+  box: bento/ubuntu-22.04
+  memory: 4096
+  cpus: 2
+  forwarded_ports:
+    - host: 5000
+      guest: 5000
+    - host: 14333
+      guest: 1433
+
+- name: control
+  ip: 192.168.56.253
+  netmask: 255.255.255.0
+  box: bento/almalinux-9
+  memory: 1024
+  cpus: 1

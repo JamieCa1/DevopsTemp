@@ -1,0 +1,11 @@
+---
+roles:
+  - name: bertvv.rh-base
+  - name: geerlingguy.jenkins
+  - name: geerlingguy.mysql
+  - name: geerlingguy.java
+
+collections:
+  - name: prometheus.prometheus
+  - name: grafana.grafana
+  - name: community.mysql

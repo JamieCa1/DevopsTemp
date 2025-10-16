@@ -1,0 +1,9 @@
+---
+all:
+  children:
+    servers:
+      hosts:
+        sportstore:
+          ansible_host: 192.168.56.10
+          ansible_user: vagrant
+          ansible_ssh_private_key_file: /home/vagrant/.ssh/sportstore_private_key

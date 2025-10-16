@@ -1,0 +1,29 @@
+---
+# Centralized firewall configuration role
+- name: Install common packages (including firewalld)
+  dnf:
+    name: "{{ common_packages }}"
+    state: present
+  when: common_packages is defined
+
+- name: Start and enable firewalld
+  systemd:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Configure firewall rules based on host role
+  include_tasks: "{{ inventory_hostname }}.yml"
+  when: inventory_hostname in ['application', 'database', 'build-monitor']
+
+- name: Configure common firewall rules for all servers
+  ansible.posix.firewalld:
+    zone: public
+    service: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+  loop:
+    - ssh
+  when: "'servers' in group_names"
+

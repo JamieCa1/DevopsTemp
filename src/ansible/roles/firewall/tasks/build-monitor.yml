@@ -1,0 +1,15 @@
+---
+# Firewall rules for build/monitor server
+- name: Open Jenkins and monitoring ports for build server
+  ansible.posix.firewalld:
+    zone: public
+    port: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+  loop:
+    - 8080/tcp
+    - 3000/tcp
+    - 9090/tcp
+    - 9100/tcp
+    - 9104/tcp

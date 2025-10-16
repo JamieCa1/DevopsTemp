@@ -1,0 +1,119 @@
+---
+# application.yml - Application server configuration
+- name: Configure application server
+  hosts: app_servers
+  become: true
+  vars_files:
+    - group_vars/network.yml
+    - group_vars/packages.yml
+
+  tasks:
+    - name: Download Microsoft package repository
+      get_url:
+        url: https://packages.microsoft.com/config/centos/8/packages-microsoft-prod.rpm
+        dest: /tmp/packages-microsoft-prod.rpm
+
+    - name: Install Microsoft package repository
+      dnf:
+        name: /tmp/packages-microsoft-prod.rpm
+        state: present
+        disable_gpg_check: true
+
+    - name: Install .NET runtime
+      dnf:
+        name: "{{ app_packages }}"
+        state: present
+      when: app_packages is defined
+
+    - name: Create application user
+      user:
+        name: rise
+        system: true
+        shell: /sbin/nologin
+        create_home: false
+
+    - name: Create application directory
+      file:
+        path: /opt/rise-app
+        state: directory
+        owner: rise
+        group: rise
+        mode: "0755"
+
+    - name: Download Caddy
+      get_url:
+        url: https://github.com/caddyserver/caddy/releases/download/v2.7.6/caddy_2.7.6_linux_amd64.tar.gz
+        dest: /tmp/caddy.tar.gz
+
+    - name: Extract Caddy
+      unarchive:
+        src: /tmp/caddy.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        creates: /usr/local/bin/caddy
+        include:
+          - caddy
+
+    - name: Set Caddy permissions
+      file:
+        path: /usr/local/bin/caddy
+        mode: "0755"
+
+    - name: Create Caddyfile
+      copy:
+        dest: /etc/Caddyfile
+        content: |
+          :{{ http_port }} {
+              reverse_proxy localhost:{{ app_port }}
+          }
+        mode: "0644"
+
+    - name: Create Caddy systemd service
+      copy:
+        dest: /etc/systemd/system/caddy.service
+        content: |
+          [Unit]
+          Description=Caddy web server
+          After=network.target
+
+          [Service]
+          Type=notify
+          ExecStart=/usr/local/bin/caddy run --config /etc/Caddyfile
+          ExecReload=/usr/local/bin/caddy reload --config /etc/Caddyfile
+          Restart=on-failure
+          RestartSec=5s
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Create application systemd service
+      copy:
+        dest: /etc/systemd/system/rise-app.service
+        content: |
+          [Unit]
+          Description=Rise .NET Application
+          After=network.target
+
+          [Service]
+          Type=notify
+          User=rise
+          Group=rise
+          WorkingDirectory=/opt/rise-app
+          ExecStart=/usr/bin/dotnet /opt/rise-app/Rise.Server.dll
+          Restart=always
+          RestartSec=10
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+          Environment=ASPNETCORE_URLS=http://localhost:{{ app_port }}
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: true
+
+    - name: Start and enable Caddy
+      systemd:
+        name: caddy
+        state: started
+        enabled: true
